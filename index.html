@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Comanda Digital</title>
+</head>
+<body>
+    <h1>Sistema de Pedidos</h1>
+
+    <div>
+        <input type="number" id="id" placeholder="ID (ex: 1)">
+        <input type="number" id="mesa" placeholder="Mesa">
+        <input type="text" id="cliente" placeholder="Nome_Cliente">
+        <input type="text" id="item" placeholder="Item">
+        <input type="number" id="preco" placeholder="Preço">
+        <button onclick="enviarPedido()">Criar Pedido</button>
+    </div>
+
+<hr>
+    <h2>Lista de Pedidos</h2>
+    <div id="lista"></div>
+
+    <script>
+        async function enviarPedido() {
+            const pedido = {
+                id: parseInt(document.getElementById('id').value),
+                mesa: parseInt(document.getElementById('mesa').value),
+                cliente: document.getElementById('cliente').value,
+                item: document.getElementById('item').value,
+                preco: parseFloat(document.getElementById('preco').value)
+            };
+
+            await fetch('http://localhost:8000/pedidos', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(pedido)
+            });
+            listarPedidos();
+        }
+
+        async function listarPedidos() {
+            const resposta = await fetch('http://localhost:8000/pedidos');
+            const dados = await resposta.json();
+            
+            let html = '<table border="1"><tr><th>Cliente</th><th>Mesa</th><th>Item</th><th>Preço</th><th>Status</th></tr>';
+            
+            dados.forEach(p => {
+                html += `<tr>
+                    <td>${p.cliente}</td>
+                    <td>${p.mesa}</td>
+                    <td>${p.item}</td>
+                    <td>R$ ${p.preco}</td>
+                    <td>${p.status}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('lista').innerHTML = html;
+        }
+
+        listarPedidos(); 
+    </script>
+</body>
+</html>
