@@ -2,26 +2,49 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>Comanda Digital</title>
 </head>
-<body>
-    <h1>Sistema de Pedidos</h1>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Sistema de Pedidos</h1>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <input type="number" id="id" placeholder="ID" class="border p-2 rounded">
+            <input type="number" id="mesa" placeholder="Mesa" class="border p-2 rounded">
+            <input type="text" id="cliente" placeholder="Nome Cliente" class="border p-2 rounded">
+            <input type="text" id="item" placeholder="Item" class="border p-2 rounded">
+            <input type="number" id="preco" placeholder="Preço" class="border p-2 rounded">
+            <button onclick="enviarPedido()" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Criar Pedido</button>
+        </div>
 
-    <div>
-        <input type="number" id="id" placeholder="ID (ex: 1)">
-        <input type="number" id="mesa" placeholder="Mesa">
-        <input type="text" id="cliente" placeholder="Nome_Cliente">
-        <input type="text" id="item" placeholder="Item">
-        <input type="number" id="preco" placeholder="Preço">
-        <button onclick="enviarPedido()">Criar Pedido</button>
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Pedidos Atuais</h2>
+        <div id="lista" class="overflow-x-auto"></div>
     </div>
 
-<hr>
-    <h2>Lista de Pedidos</h2>
-    <div id="lista"></div>
-
     <script>
+        async function listarPedidos() {
+            const resposta = await fetch('http://localhost:8000/pedidos');
+            const dados = await resposta.json();
+            
+            let html = '<table class="w-full text-left border-collapse"><thead><tr class="bg-gray-200"><th class="p-2">Cliente</th><th>Mesa</th><th>Item</th><th>Preço</th><th>Status</th></tr></thead><tbody>';
+            
+            dados.forEach(p => {
+                html += `<tr class="border-b">
+                    <td class="p-2">${p.cliente}</td>
+                    <td>${p.mesa}</td>
+                    <td>${p.item}</td>
+                    <td>R$ ${p.preco}</td>
+                    <td><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">${p.status}</span></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('lista').innerHTML = html;
+        }
+
         async function enviarPedido() {
+            // ... (seu código de envio continua o mesmo)
             const pedido = {
                 id: parseInt(document.getElementById('id').value),
                 mesa: parseInt(document.getElementById('mesa').value),
@@ -29,7 +52,6 @@
                 item: document.getElementById('item').value,
                 preco: parseFloat(document.getElementById('preco').value)
             };
-
             await fetch('http://localhost:8000/pedidos', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -37,28 +59,7 @@
             });
             listarPedidos();
         }
-
-        async function listarPedidos() {
-            const resposta = await fetch('http://localhost:8000/pedidos');
-            const dados = await resposta.json();
-            
-            let html = '<table border="1"><tr><th>Cliente</th><th>Mesa</th><th>Item</th><th>Preço</th><th>Status</th></tr>';
-            
-            dados.forEach(p => {
-                html += `<tr>
-                    <td>${p.cliente}</td>
-                    <td>${p.mesa}</td>
-                    <td>${p.item}</td>
-                    <td>R$ ${p.preco}</td>
-                    <td>${p.status}</td>
-                </tr>`;
-            });
-            
-            html += '</table>';
-            document.getElementById('lista').innerHTML = html;
-        }
-
-        listarPedidos(); 
+        listarPedidos();
     </script>
 </body>
 </html>
