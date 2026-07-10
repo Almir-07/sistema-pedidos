@@ -1,31 +1,20 @@
-from fastapi import FastAPI # type: ignore
-from fastapi.middleware.cors import CORSMiddleware #type:ignore
-from pydantic import BaseModel # type: ignore
+from fastapi import FastAPI #type: ignore
+from fastapi.middleware.cors import CORSMiddleware #type: ignore
+from routes.pedido_rotas import router
 
-app = FastAPI(openai_url=None)
+app = FastAPI(
+    title="API Comanda Digital",
+    redirect_slashes=False,
+    description="Sistema CRUD completo.",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class Pedido(BaseModel):
-    id: int
-    mesa:int
-    cliente:str
-    item: str
-    preco: float
-    status:str = "Pendente"
-
-db_pedidos=[]
-
-@app.get("/pedidos")
-def listar_pedidos():
-    return db_pedidos
-
-@app.post("/pedidos")
-def criar_pedido(pedido: Pedido):
-    db_pedidos.append(pedido)
-    return {"Mesagem": "Pedido criado!", "pedido": pedido}
+app.include_router(router)

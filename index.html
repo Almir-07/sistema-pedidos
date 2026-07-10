@@ -6,60 +6,167 @@
     <title>Comanda Digital</title>
 </head>
 <body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">Sistema de Pedidos</h1>
+    <div class="bg-white p-6 rounded shadow-md mb-6">
+    <h2 class="text-xl font-bold mb-4">Novo Pedido</h2>
+    <div class="grid grid-cols-2 gap-4">
+        <input type="number" id="mesa" placeholder="Nº Mesa" class="border p-2 rounded">
+        <input type="text" id="cliente" placeholder="Nome do Cliente" class="border p-2 rounded">
         
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <input type="number" id="id" placeholder="ID" class="border p-2 rounded">
-            <input type="number" id="mesa" placeholder="Mesa" class="border p-2 rounded">
-            <input type="text" id="cliente" placeholder="Nome Cliente" class="border p-2 rounded">
-            <input type="text" id="item" placeholder="Item" class="border p-2 rounded">
-            <input type="number" id="preco" placeholder="Preço" class="border p-2 rounded">
-            <button onclick="enviarPedido()" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Criar Pedido</button>
-        </div>
+        <input list="lista-cardapio" id="item" placeholder="Escolha o item..." class="border p-2 rounded" oninput="preencherPreco()">
+        <datalist id="lista-cardapio"></datalist>
 
+        <input type="number" id="preco" placeholder="Preço" class="border p-2 rounded" readonly>
+    </div>
+    <button onclick="enviarPedido()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Criar Pedido</button>
+</div>
         <h2 class="text-xl font-semibold mb-4 text-gray-700">Pedidos Atuais</h2>
         <div id="lista" class="overflow-x-auto"></div>
     </div>
 
     <script>
-        async function listarPedidos() {
-            const resposta = await fetch('http://localhost:8000/pedidos');
-            const dados = await resposta.json();
-            
-            let html = '<table class="w-full text-left border-collapse"><thead><tr class="bg-gray-200"><th class="p-2">Cliente</th><th>Mesa</th><th>Item</th><th>Preço</th><th>Status</th></tr></thead><tbody>';
-            
-            dados.forEach(p => {
-                html += `<tr class="border-b">
-                    <td class="p-2">${p.cliente}</td>
-                    <td>${p.mesa}</td>
-                    <td>${p.item}</td>
-                    <td>R$ ${p.preco}</td>
-                    <td><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">${p.status}</span></td>
-                </tr>`;
-            });
-            
-            html += '</tbody></table>';
-            document.getElementById('lista').innerHTML = html;
-        }
+    const API_URL = 'http://localhost:8000/pedidos/';
+    const CARDAPIO_URL = 'http://localhost:8000/pedidos/cardapio';
+    const TOKEN = 'aure-token-123';
 
-        async function enviarPedido() {
-            // ... (seu código de envio continua o mesmo)
-            const pedido = {
-                id: parseInt(document.getElementById('id').value),
-                mesa: parseInt(document.getElementById('mesa').value),
-                cliente: document.getElementById('cliente').value,
-                item: document.getElementById('item').value,
-                preco: parseFloat(document.getElementById('preco').value)
-            };
-            await fetch('http://localhost:8000/pedidos', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(pedido)
-            });
-            listarPedidos();
-        }
+    //FUNÇÕES DE PEDIDOS
+    async function listarPedidos() {
+        const resposta = await fetch(API_URL);
+        const dados = await resposta.json();
+        
+        let html = '<table class="w-full text-left border-collapse mt-4"><thead><tr class="bg-gray-200"><th class="p-2">ID</th><th>Cliente</th><th>Mesa</th><th>Item</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        
+        dados.forEach(p => {
+            let corStatus = p.status === 'Entregue' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+            let dadosPedidoStr = encodeURIComponent(JSON.stringify(p));
+
+            html += `<tr class="border-b hover:bg-gray-50">
+                <td class="p-2 font-bold">${p.id}</td>
+                <td>${p.cliente}</td>
+                <td>${p.mesa}</td>
+                <td>${p.item}</td>
+                <td>R$ ${p.preco.toFixed(2)}</td>
+                <td><span class="${corStatus} px-2 py-1 rounded text-sm">${p.status}</span></td>
+                <td class="py-2">
+                    <button onclick="marcarEntregue('${dadosPedidoStr}')" class="text-sm bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 mr-2">Entregue</button>
+                    <button onclick="deletarPedido(${p.id})" class="text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Excluir</button>
+                </td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        document.getElementById('lista').innerHTML = html;
+    }
+
+    async function enviarPedido() {
+        const pedido = {
+            mesa: parseInt(document.getElementById('mesa').value),
+            cliente: document.getElementById('cliente').value,
+            item: document.getElementById('item').value,
+            preco: parseFloat(document.getElementById('preco').value)
+        };
+        
+        const resposta = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-token': TOKEN },
+            body: JSON.stringify(pedido)
+        });
+
+        if (!resposta.ok) { alert("Erro ao criar pedido."); return; }
+        
+        document.getElementById('mesa').value = '';
+        document.getElementById('cliente').value = '';
+        document.getElementById('item').value = '';
+        document.getElementById('preco').value = '';
+        listarPedidos(); 
+    }
+
+    // FUNÇÕES DE CARDÁPIO
+    let cardapioLocal = [];
+
+    async function carregarCardapio() {
+        try {
+            const res = await fetch(CARDAPIO_URL);
+            cardapioLocal = await res.json();
+            
+            const datalist = document.getElementById('lista-cardapio');
+            datalist.innerHTML = cardapioLocal.map(item => `<option value="${item.nome}">`).join('');
+
+            const listaAdmin = document.getElementById('lista-admin-cardapio');
+            listaAdmin.innerHTML = cardapioLocal.map(item => `
+                <li class="flex justify-between bg-white p-2 rounded shadow-sm border-l-4 border-gray-300">
+                    <span>${item.nome} - R$ ${item.preco.toFixed(2)}</span>
+                    <button onclick="deletarPrato(${item.id})" class="text-red-500 font-bold hover:underline">Remover</button>
+                </li>
+            `).join('');
+        } catch (error) { console.error("Erro ao carregar cardápio:", error); }
+    }
+
+    function preencherPreco() {
+        const nomeEscolhido = document.getElementById('item').value;
+        const itemEncontrado = cardapioLocal.find(i => i.nome.toLowerCase().trim() === nomeEscolhido.toLowerCase().trim());
+        if (itemEncontrado) document.getElementById('preco').value = itemEncontrado.preco.toFixed(2);
+        else document.getElementById('preco').value = '';
+    }
+
+    async function adicionarPrato() {
+        const nome = document.getElementById('novoNome').value;
+        const preco = parseFloat(document.getElementById('novoPreco').value);
+
+        await fetch(CARDAPIO_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, preco })
+        });
+        
+        document.getElementById('novoNome').value = '';
+        document.getElementById('novoPreco').value = '';
+        carregarCardapio();
+    }
+
+async function deletarPedido(id) {
+    if(confirm("Tem certeza que deseja excluir o pedido " + id + "?")) {
+        await fetch(`${API_URL}${id}`, {
+            method: 'DELETE',
+            headers: { 'x-token': TOKEN }
+        });
         listarPedidos();
-    </script>
+    }
+}
+
+async function deletarPrato(id) {
+    if(confirm("Deseja remover este prato?")) {
+        await fetch(`${CARDAPIO_URL}/${id}`, { method: 'DELETE' });
+        carregarCardapio();
+    }
+}
+
+async function marcarEntregue(pedidoStr) {
+    let pedido = JSON.parse(decodeURIComponent(pedidoStr));
+    pedido.status = "Entregue";
+
+    await fetch(`http://localhost:8000/pedidos/${pedido.id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-token': TOKEN
+        },
+        body: JSON.stringify(pedido)
+    });
+    listarPedidos();
+}
+
+    // Inicialização
+    listarPedidos();
+    carregarCardapio();
+</script>
+    <div class="bg-gray-100 p-6 rounded shadow-md mt-10">
+    <h2 class="text-xl font-bold mb-4">Gerenciar Cardápio</h2>
+    <div class="flex gap-2 mb-4">
+        <input type="text" id="novoNome" placeholder="Nome do Prato" class="border p-2 rounded w-full">
+        <input type="number" id="novoPreco" placeholder="Preço" class="border p-2 rounded w-24">
+        <button onclick="adicionarPrato()" class="bg-green-600 text-white px-4 py-2 rounded">Adicionar</button>
+    </div>
+    <ul id="lista-admin-cardapio" class="space-y-2"></ul>
+</div>
 </body>
 </html>
